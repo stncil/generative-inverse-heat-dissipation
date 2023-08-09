@@ -45,7 +45,7 @@ class DCTBlur(nn.Module):
         dispersion = np.sqrt(mass ** 2 + c ** 2 * (kx ** 2 + ky ** 2) + lamda * (kx ** 2 + ky ** 2) ** 2)
         dissipation = mass + 1j * gamma * np.sqrt(kx ** 2 + ky ** 2)
 
-        self.frequencies_squared = torch.tensor(dispersion - dissipation)
+        self.frequencies_squared = torch.tensor(dispersion - dissipation).to(device)
 
     def forward(self, x, fwd_steps):
         if len(x.shape) == 4:
