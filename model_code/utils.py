@@ -4,10 +4,9 @@ import torch.nn as nn
 import logging
 import numpy as np
 from model_code.unet import UNetModel
-from model_code import torch_dct
+from model_code import torch_dct_orig
 
-
-class DCTBlur(nn.Module):
+class DCTBlur_orig(nn.Module):
 
     def __init__(self, blur_sigmas, image_size, device):
         super(DCTBlur, self).__init__()
@@ -24,6 +23,38 @@ class DCTBlur(nn.Module):
         t = sigmas**2/2
         dct_coefs = torch_dct.dct_2d(x, norm='ortho')
         dct_coefs = dct_coefs * torch.exp(- self.frequencies_squared * t)
+        return torch_dct.idct_2d(dct_coefs, norm='ortho')
+
+class DCTBlur(nn.Module):
+
+    def __init__(self, blur_sigmas, image_size, device):
+        super(DCTBlur, self).__init__()
+        self.blur_sigmas = torch.tensor(blur_sigmas).to(device)
+
+        Nx, Ny = image_size, image_size
+        dx = dy = 0.5
+        mass = 0
+        c = 5
+        lamda = 0.5
+        gamma = 0.8
+        kx = np.array([[np.pi * ((i + Nx // 2) % Nx - Nx // 2) / (Nx * dx)
+                        for j in range(Ny)] for i in range(Nx)])
+        ky = np.array([[np.pi * ((j + Ny // 2) % Ny - Ny // 2) / (Ny * dy)
+                        for j in range(Ny)] for i in range(Nx)])
+
+        dispersion = np.sqrt(mass ** 2 + c ** 2 * (kx ** 2 + ky ** 2) + lamda * (kx ** 2 + ky ** 2) ** 2)
+        dissipation = mass + 1j * gamma * np.sqrt(kx ** 2 + ky ** 2)
+
+        self.frequencies_squared = dispersion - dissipation
+
+    def forward(self, x, fwd_steps):
+        if len(x.shape) == 4:
+            sigmas = self.blur_sigmas[fwd_steps][:, None, None, None]
+        elif len(x.shape) == 3:
+            sigmas = self.blur_sigmas[fwd_steps][:, None, None]
+        t = sigmas**2/2
+        dct_coefs = torch_dct.dct_2d(x, norm='ortho')
+        dct_coefs = dct_coefs * torch.exp(-1j * self.frequencies_squared * t)
         return torch_dct.idct_2d(dct_coefs, norm='ortho')
 
 
