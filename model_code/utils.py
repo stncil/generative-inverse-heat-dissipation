@@ -4,7 +4,7 @@ import torch.nn as nn
 import logging
 import numpy as np
 from model_code.unet import UNetModel
-from model_code import torch_dct_orig
+from model_code import torch_dct
 
 class DCTBlur_orig(nn.Module):
 
